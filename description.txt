@@ -1,0 +1,34 @@
+Project 01
+- Personal Finance Tracker API                                      Easy — Build first
+
+A REST API to track income, expenses, and budgets by category. Solves a real problem everyone relates to — recruiters immediately understand the use case.
+
+Why this project works
+Builds directly on your existing Flask + SQLAlchemy skills. Introduces REST API design (JSON in/out), JWT authentication, and Swagger/OpenAPI docs — all things recruiters check for.
+Deployable to Render.com for free in under 30 minutes.
+
+Must-have features:
+- JWT authentication
+- CRUD for transactions
+- Category filtering
+- Monthly summary endpoint
+- Swagger UI docs
+- SQLite → PostgreSQL
+
+Tech stack:
+- Flask or FastAPI
+- SQLAlchemy + PostgreSQL
+- Flask-JWT-Extended
+- Marshmallow (validation)
+- Flask-Swagger-UI
+- Render.com (deploy)
+
+Resume line
+"Built a RESTful Finance Tracker API using FastAPI, PostgreSQL, and JWT auth — deployed to Render with Swagger documentation."
+
+
+Categories : 
+1 : Salary
+2 : Groceries
+3 : Rent
+4 : Freelancing
