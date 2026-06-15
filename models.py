@@ -15,7 +15,7 @@ class types(str, Enum):
     Expense = "Expense"
 
 class User(Base):
-    __tablename__ = "user"
+    __tablename__ = "users"
 
     id : Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     email : Mapped[str] = mapped_column(String(255), nullable=False)
@@ -25,13 +25,20 @@ class User(Base):
         default=lambda: datetime.now(UTC)
     )
 
+    transactions : Mapped[list[Transactions]] = relationship(
+        back_populates="user",
+        cascade="all, delete-orphan"
+    )
+
+
+
 
 
 class Transactions(Base):
     __tablename__ = "transactions"
 
     id : Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
-    user_id : Mapped[int] = mapped_column(ForeignKey("user.id"), nullable=False, index=True)
+    user_id : Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False, index=True)
     amount : Mapped[int] = mapped_column(Integer, nullable=False)
     category_id : Mapped[int] = mapped_column(
         ForeignKey("categories.id"),
@@ -48,12 +55,19 @@ class Transactions(Base):
     description : Mapped[str | None] = mapped_column(Text)
 
 
+    user : Mapped[User] = relationship(
+        back_populates="transactions"
+    )
+
+
+
+
 
 class Budgets(Base):
     __tablename__ = "budgets"
 
     id : Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
-    user_id : Mapped[int] = mapped_column(ForeignKey("user.id"), nullable=False, index=True)
+    user_id : Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False, index=True)
 
     category_id : Mapped[int] = mapped_column(
         ForeignKey("categories.id"),
@@ -73,7 +87,7 @@ class Categories(Base):
     __tablename__ = "categories"
 
     id : Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
-    user_id : Mapped[int] = mapped_column(ForeignKey("user.id"), nullable=False, index=True)
+    user_id : Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False, index=True)
     category : Mapped[str] = mapped_column(String, nullable=False)
     type : Mapped [str] = mapped_column(String, nullable=False)
 

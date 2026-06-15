@@ -27,6 +27,7 @@ class TransBase(BaseModel):
     description : str
 
 class TransCreate(TransBase):
+    user_id: int # TEMPORARY
     pass 
 
 class TransUpdate(BaseModel):
@@ -39,6 +40,7 @@ class TransResponse(TransBase):
     model_config = ConfigDict(from_attributes=True)
 
     id : int
+    user_id : int
     date : datetime
 
 
@@ -49,6 +51,7 @@ class BudgetBase(BaseModel):
     amount : int
 
 class BudgetCreate(BudgetBase):
+    user_id: int # TEMPORARY
     pass 
 
 class BudgetUpdate(BaseModel):
@@ -59,4 +62,5 @@ class BudgetResponse(BudgetBase):
     model_config = ConfigDict(from_attributes=True)
 
     id : int
+    user_id : int
     month : datetime

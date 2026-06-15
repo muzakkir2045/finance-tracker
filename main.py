@@ -34,13 +34,15 @@ def home(db: Annotated[Session, Depends(get_db)]):
     }
 
 
+
+
+
 @app.post("/users",response_model=UserResponse,
         status_code=status.HTTP_201_CREATED)
 def create_user(user: UserCreate, db: Annotated[Session, Depends(get_db)]):
     result = db.execute(
         select(models.User).where(models.User.username == user.username)
     )
-
     username = result.scalars().first()
     if username:
         raise HTTPException(
@@ -58,7 +60,6 @@ def create_user(user: UserCreate, db: Annotated[Session, Depends(get_db)]):
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Email already exists"
         )
-    
 
     new_user = models.User(
         email = user.email,
@@ -72,8 +73,90 @@ def create_user(user: UserCreate, db: Annotated[Session, Depends(get_db)]):
     return new_user
 
 
+
+@app.get("/users/{user_id}",response_model=UserResponse)
+def get_user(user_id:int ,db: Annotated[Session, Depends(get_db)]):
+
+    result = db.execute(
+        select(models.User).where(models.User.id == user_id)
+    )
+
+    user = result.scalars().first()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+
+    return user
+
+
+@app.get("/users/{user_id}/transactions",response_model=list[TransResponse])
+def get_user_transactions(user_id:int ,db: Annotated[Session, Depends(get_db)]):
+    result = db.execute(
+        select(models.User).where(models.User.id == user_id)
+    )
+
+    user = result.scalars().first()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+    
+    result = db.execute(
+        select(models.Transactions).where(models.Transactions.user_id == user_id)
+    )
+
+    transactions = result.scalars().all()
+    return transactions
+
+# update user
+# ============= to be made
+
+# delete user
+@app.delete("/users/delete/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_user(user_id: int, db:Annotated[Session, Depends(get_db)]):
+    result = db.execute(
+        select(models.User).where(models.User.id == user_id)
+    )
+
+    user = result.scalars().first()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+    
+    db.delete(user)
+    db.commit()
+
+
+
+@app.get("/users/{user_id}/budgets",response_model=list[BudgetResponse])
+def get_user_budgets(user_id:int ,db: Annotated[Session, Depends(get_db)]):
+
+    result = db.execute(
+        select(models.User).where(models.User.id == user_id)
+    )
+
+    user = result.scalars().first()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+    
+    result = db.execute(
+        select(models.Budgets).where(models.Budgets.user_id == user_id)
+    )
+    budgets = result.scalars().all()
+    return budgets
+
+
+
 # Transaction Endpoints
-@app.get("/transactions")
+@app.get("/transactions", response_model=list[TransResponse])
 def get_transactions(db: Annotated[Session, Depends(get_db)], 
     type: str | None = None, category_id: int | None = None):
     
@@ -89,7 +172,7 @@ def get_transactions(db: Annotated[Session, Depends(get_db)],
     return transactions
 
 
-@app.get("/transactions/{trans_id}")
+@app.get("/transactions/{trans_id}",response_model=TransResponse)
 def get_transaction(
     trans_id:int ,
     db: Annotated[Session, Depends(get_db)],
@@ -121,7 +204,19 @@ def get_transaction(
         status_code=status.HTTP_201_CREATED)
 def add_transaction(transaction: TransCreate, db: Annotated[Session, Depends(get_db)]):
 
+    result = db.execute(
+        select(models.User).where(models.User.id == transaction.user_id)
+    )
+    user = result.scalars().first()
+
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )       
+
     new_transaction = models.Transactions(
+        user_id = transaction.user_id,
         amount = transaction.amount,
         category_id = transaction.category_id,
         type = transaction.type,
@@ -234,6 +329,16 @@ def get_budget(budget_id: int, db: Annotated[Session, Depends(get_db)]):
 
 @app.post("/budgets", response_model=BudgetResponse, status_code=status.HTTP_201_CREATED)
 def add_budget(budget:BudgetCreate, db: Annotated[Session, Depends(get_db)]):
+    result = db.execute(
+        select(models.User).where(models.User.id == budget.user_id)
+    )
+    user = result.scalars().first()
+
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )   
 
     result = db.execute(
         select(models.Categories.type).where(models.Categories.id == budget.category_id)
@@ -247,7 +352,8 @@ def add_budget(budget:BudgetCreate, db: Annotated[Session, Depends(get_db)]):
 
     new_budget = models.Budgets(
         category_id = budget.category_id,
-        amount = budget.amount
+        amount = budget.amount,
+        user_id = budget.user_id
     )
 
     db.add(new_budget)
