@@ -4,11 +4,8 @@ from datetime import UTC, datetime
 from sqlalchemy import DateTime, ForeignKey, Integer, String, Text, Enum as SQLEnum
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-
-
 from database import Base
 
-# 3 models -> Transactions, Budgets, Categories
 
 class types(str, Enum):
     Income = "Income"
@@ -18,8 +15,9 @@ class User(Base):
     __tablename__ = "users"
 
     id : Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
-    email : Mapped[str] = mapped_column(String(255), nullable=False)
-    username : Mapped[str] = mapped_column(String(255), nullable=False)
+    username : Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
+    email : Mapped[str] = mapped_column(String(120), unique=True, nullable=False)
+    password_hash: Mapped[str] = mapped_column(String(200), nullable=False)
     date : Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         default=lambda: datetime.now(UTC)

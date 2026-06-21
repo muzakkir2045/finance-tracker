@@ -1,5 +1,5 @@
 
-from pydantic import BaseModel, ConfigDict, EmailStr
+from pydantic import BaseModel, ConfigDict, EmailStr , Field
 from datetime import datetime
 from enum import Enum
 
@@ -8,11 +8,11 @@ class types(str, Enum):
     Expense = "Expense"
 
 class UserBase(BaseModel):
-    email : EmailStr
-    username : str
+    username : str = Field(min_length=1, max_length=50)
+    email : EmailStr = Field(max_length=120)
 
 class UserCreate(UserBase):
-    pass 
+    password : str = Field(min_length=8)
 
 class UserResponse(UserBase):
     model_config = ConfigDict(from_attributes=True)
@@ -20,9 +20,12 @@ class UserResponse(UserBase):
     date : datetime
 
 class UserUpdate(BaseModel):
-    username: str | None = None 
-    email: EmailStr | None = None
-    
+    username: str | None = Field(default=None, min_length=1, max_length=50) 
+    email: EmailStr | None = Field(default=None, max_length=120)
+
+class Token(BaseModel):
+    access_token : str
+    token_type : str   
 
 class TransBase(BaseModel):
     amount : int
