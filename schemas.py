@@ -43,9 +43,6 @@ class TransResponse(TransBase):
     user_id : int
     date : datetime
 
-
-
-
 class BudgetBase(BaseModel):
     category_id : int
     amount : int

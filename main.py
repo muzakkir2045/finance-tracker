@@ -1,29 +1,40 @@
 import models
+
+from contextlib import asynccontextmanager
+from fastapi.exception_handlers import http_exception_handler, request_validation_exception_handler
 from fastapi import FastAPI, HTTPException, Depends, status, Request
 from schemas import UserCreate, UserResponse, Summary
 from schemas import TransCreate, TransResponse, TransUpdate, BudgetCreate, BudgetResponse, BudgetUpdate
 from sqlalchemy import select, insert, func, and_
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import JSONResponse
+
 from starlette.exceptions import HTTPException as StarletteHTTPException
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload, joinedload
 from database import Base, engine, get_db
 from typing import Annotated
 
 
-Base.metadata.create_all(bind=engine)
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    # Startup
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+    yield
+    # Shutdown
+    await engine.dispose()
 
-app = FastAPI()
+app = FastAPI(lifespan=lifespan)
 
 # CRUD for both transactions and budgets
 @app.get("/")
-def home(db: Annotated[Session, Depends(get_db)]):
-    result = db.execute(
+async def home(db: Annotated[AsyncSession, Depends(get_db)]):
+    result = await db.execute(
         select(models.Transactions)
     )
     transactions = result.scalars().all()
 
-    result = db.execute(
+    result = await db.execute(
         select(models.Budgets)
     )
     budgets = result.scalars().all()
@@ -38,8 +49,8 @@ def home(db: Annotated[Session, Depends(get_db)]):
 
 @app.post("/users",response_model=UserResponse,
         status_code=status.HTTP_201_CREATED)
-def create_user(user: UserCreate, db: Annotated[Session, Depends(get_db)]):
-    result = db.execute(
+async def create_user(user: UserCreate, db: Annotated[AsyncSession, Depends(get_db)]):
+    result = await db.execute(
         select(models.User).where(models.User.username == user.username)
     )
     username = result.scalars().first()
@@ -49,7 +60,7 @@ def create_user(user: UserCreate, db: Annotated[Session, Depends(get_db)]):
             detail="username already exists"
         )
 
-    result = db.execute(
+    result = await db.execute(
         select(models.User).where(models.User.email == user.email)
     )
     
@@ -67,10 +78,10 @@ def create_user(user: UserCreate, db: Annotated[Session, Depends(get_db)]):
 
 
     db.add(new_user)
-    db.commit()
-    db.refresh(new_user)
+    await db.commit()
+    await db.refresh(new_user)
     
-    db.execute(
+    await db.execute(
         insert(models.Categories),[
             {"user_id" : new_user.id , "category" : "Salary", "type" : "Income"},
             {"user_id" : new_user.id , "category" : "Rent", "type" : "Expense"},
@@ -78,7 +89,7 @@ def create_user(user: UserCreate, db: Annotated[Session, Depends(get_db)]):
             {"user_id" : new_user.id , "category" : "Freelancing", "type" : "Income"}
         ]
     )
-    db.commit()
+    await db.commit()
 
 
     return new_user
@@ -86,9 +97,9 @@ def create_user(user: UserCreate, db: Annotated[Session, Depends(get_db)]):
 
 
 @app.get("/users/{user_id}",response_model=UserResponse)
-def get_user(user_id:int ,db: Annotated[Session, Depends(get_db)]):
+async def get_user(user_id:int ,db: Annotated[AsyncSession, Depends(get_db)]):
 
-    result = db.execute(
+    result = await db.execute(
         select(models.User).where(models.User.id == user_id)
     )
 
@@ -103,9 +114,10 @@ def get_user(user_id:int ,db: Annotated[Session, Depends(get_db)]):
 
 
 @app.get("/users/{user_id}/transactions",response_model=list[TransResponse])
-def get_user_transactions(user_id:int ,db: Annotated[Session, Depends(get_db)]):
-    result = db.execute(
-        select(models.User).where(models.User.id == user_id)
+async def get_user_transactions(user_id:int ,db: Annotated[AsyncSession, Depends(get_db)]):
+    result = await db.execute(
+        select(models.User)
+        .where(models.User.id == user_id)
     )
 
     user = result.scalars().first()
@@ -115,8 +127,10 @@ def get_user_transactions(user_id:int ,db: Annotated[Session, Depends(get_db)]):
             detail="User not found"
         )
     
-    result = db.execute(
-        select(models.Transactions).where(models.Transactions.user_id == user_id)
+    result = await db.execute(
+        select(models.Transactions)
+        .where(models.Transactions.user_id == user_id)
+        .options(joinedload(models.Transactions.category))
     )
 
     transactions = result.scalars().all()
@@ -127,8 +141,8 @@ def get_user_transactions(user_id:int ,db: Annotated[Session, Depends(get_db)]):
 
 # delete user
 @app.delete("/users/delete/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_user(user_id: int, db:Annotated[Session, Depends(get_db)]):
-    result = db.execute(
+async def delete_user(user_id: int, db:Annotated[AsyncSession, Depends(get_db)]):
+    result = await db.execute(
         select(models.User).where(models.User.id == user_id)
     )
 
@@ -140,14 +154,14 @@ async def delete_user(user_id: int, db:Annotated[Session, Depends(get_db)]):
         )
     
     db.delete(user)
-    db.commit()
+    await db.commit()
 
 
 
 @app.get("/users/{user_id}/budgets",response_model=list[BudgetResponse])
-def get_user_budgets(user_id:int ,db: Annotated[Session, Depends(get_db)]):
+async def get_user_budgets(user_id:int ,db: Annotated[AsyncSession, Depends(get_db)]):
 
-    result = db.execute(
+    result = await db.execute(
         select(models.User).where(models.User.id == user_id)
     )
 
@@ -158,7 +172,7 @@ def get_user_budgets(user_id:int ,db: Annotated[Session, Depends(get_db)]):
             detail="User not found"
         )
     
-    result = db.execute(
+    result = await db.execute(
         select(models.Budgets).where(models.Budgets.user_id == user_id)
     )
     budgets = result.scalars().all()
@@ -168,7 +182,7 @@ def get_user_budgets(user_id:int ,db: Annotated[Session, Depends(get_db)]):
 
 # Transaction Endpoints
 @app.get("/transactions", response_model=list[TransResponse])
-def get_transactions(db: Annotated[Session, Depends(get_db)], 
+async def get_transactions(db: Annotated[AsyncSession, Depends(get_db)], 
     type: str | None = None, category_id: int | None = None):
     
     stmt = select(models.Transactions)
@@ -184,9 +198,9 @@ def get_transactions(db: Annotated[Session, Depends(get_db)],
 
 
 @app.get("/transactions/{trans_id}",response_model=TransResponse)
-def get_transaction(
+async def get_transaction(
     trans_id:int ,
-    db: Annotated[Session, Depends(get_db)],
+    db: Annotated[AsyncSession, Depends(get_db)],
     type: str | None = None, category_id: int | None = None
 ):
     stmt = select(models.Transactions).where(models.Transactions.id == trans_id)
@@ -213,7 +227,7 @@ def get_transaction(
         "/transactions",
         response_model=TransResponse,
         status_code=status.HTTP_201_CREATED)
-def add_transaction(transaction: TransCreate, db: Annotated[Session, Depends(get_db)]):
+async def add_transaction(transaction: TransCreate, db: Annotated[AsyncSession, Depends(get_db)]):
 
     result = db.execute(
         select(models.User).where(models.User.id == transaction.user_id)
@@ -253,7 +267,7 @@ def add_transaction(transaction: TransCreate, db: Annotated[Session, Depends(get
 
 
 @app.put("/transactions/{trans_id}", response_model=TransResponse)
-def update_transaction_full(trans_id : int, trans_data : TransCreate, db: Annotated[Session, Depends(get_db)]):
+async def update_transaction_full(trans_id : int, trans_data : TransCreate, db: Annotated[AsyncSession, Depends(get_db)]):
 
     result = db.execute(
         select(models.Transactions).where(models.Transactions.id == trans_id)
@@ -289,7 +303,7 @@ def update_transaction_full(trans_id : int, trans_data : TransCreate, db: Annota
 
 
 @app.patch("/transactions/{trans_id}", response_model=TransResponse)
-def update_transaction_partial(trans_id : int, trans_data : TransUpdate, db: Annotated[Session, Depends(get_db)]):
+async def update_transaction_partial(trans_id : int, trans_data : TransUpdate, db: Annotated[AsyncSession, Depends(get_db)]):
     
     result = db.execute(
         select(models.Transactions).where(models.Transactions.id == trans_id)
@@ -313,7 +327,7 @@ def update_transaction_partial(trans_id : int, trans_data : TransUpdate, db: Ann
 
 
 @app.delete("/transactions/{trans_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_transaction(trans_id:int , db: Annotated[Session, Depends(get_db)]):
+async def delete_transaction(trans_id:int , db: Annotated[AsyncSession, Depends(get_db)]):
 
     result = db.execute(
         select(models.Transactions).where(models.Transactions.id == trans_id)
@@ -333,7 +347,7 @@ def delete_transaction(trans_id:int , db: Annotated[Session, Depends(get_db)]):
 
 # Budget Endpoints
 @app.get("/budgets", response_model=BudgetResponse)
-def get_budgets(db: Annotated[Session, Depends(get_db)]):
+async def get_budgets(db: Annotated[AsyncSession, Depends(get_db)]):
     result = db.execute(
         select(models.Budgets)
     )
@@ -343,7 +357,7 @@ def get_budgets(db: Annotated[Session, Depends(get_db)]):
 
 
 @app.get("/budgets/{budget_id}", response_model=BudgetResponse)
-def get_budget(budget_id: int, db: Annotated[Session, Depends(get_db)]):
+async def get_budget(budget_id: int, db: Annotated[AsyncSession, Depends(get_db)]):
     result = db.execute(
         select(models.Budgets).where(models.Budgets.id == budget_id)
     )
@@ -360,7 +374,7 @@ def get_budget(budget_id: int, db: Annotated[Session, Depends(get_db)]):
 
 
 @app.post("/budgets", response_model=BudgetResponse, status_code=status.HTTP_201_CREATED)
-def add_budget(budget:BudgetCreate, db: Annotated[Session, Depends(get_db)]):
+async def add_budget(budget:BudgetCreate, db: Annotated[AsyncSession, Depends(get_db)]):
     result = db.execute(
         select(models.User).where(models.User.id == budget.user_id)
     )
@@ -396,7 +410,7 @@ def add_budget(budget:BudgetCreate, db: Annotated[Session, Depends(get_db)]):
 
 
 @app.put("/budgets/{budget_it}", response_model=BudgetResponse)
-def budget_update_full(budget_id:int, budget_data: BudgetCreate, db: Annotated[Session, Depends(get_db)]):
+async def budget_update_full(budget_id:int, budget_data: BudgetCreate, db: Annotated[AsyncSession, Depends(get_db)]):
     result = db.execute(
         select(models.Budgets).where(models.Budgets.id == budget_id)
     )
@@ -418,7 +432,7 @@ def budget_update_full(budget_id:int, budget_data: BudgetCreate, db: Annotated[S
 
 
 @app.patch("/budgets/{budget_it}", response_model=BudgetResponse)
-def budget_update_partial(budget_id:int, budget_data: BudgetUpdate, db: Annotated[Session, Depends(get_db)]):
+async def budget_update_partial(budget_id:int, budget_data: BudgetUpdate, db: Annotated[AsyncSession, Depends(get_db)]):
     result = db.execute(
         select(models.Budgets).where(models.Budgets.id == budget_id)
     )
@@ -442,7 +456,7 @@ def budget_update_partial(budget_id:int, budget_data: BudgetUpdate, db: Annotate
 
 
 @app.delete("/budgets/{budget_id}", status_code=status.HTTP_204_NO_CONTENT)
-def remove_budget(budget_id:int, db:Annotated[Session, Depends(get_db)]):
+async def remove_budget(budget_id:int, db:Annotated[AsyncSession, Depends(get_db)]):
     result = db.execute(
         select(models.Budgets).where(models.Budgets.id == budget_id)
     )
@@ -460,7 +474,7 @@ def remove_budget(budget_id:int, db:Annotated[Session, Depends(get_db)]):
 
 
 @app.get("/summary/{user_id}")
-def monthly_summary(user_id:int ,db: Annotated[Session, Depends(get_db)]):
+async def monthly_summary(user_id:int ,db: Annotated[AsyncSession, Depends(get_db)]):
     result = db.execute(
         select(models.User).where(models.User.id == user_id)
     )
@@ -512,7 +526,7 @@ def monthly_summary(user_id:int ,db: Annotated[Session, Depends(get_db)]):
 
 
 @app.exception_handler(StarletteHTTPException)
-def general_http_exception_handler(request: Request, exception: StarletteHTTPException):
+async def general_http_exception_handler(request: Request, exception: StarletteHTTPException):
     message = (
         exception.detail
         if exception.detail
@@ -527,7 +541,7 @@ def general_http_exception_handler(request: Request, exception: StarletteHTTPExc
 
 
 @app.exception_handler(RequestValidationError)
-def validation_exception_handler(request: Request, exception: RequestValidationError):
+async def validation_exception_handler(request: Request, exception: RequestValidationError):
 
     return JSONResponse(
         status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,

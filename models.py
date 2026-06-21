@@ -25,13 +25,18 @@ class User(Base):
         default=lambda: datetime.now(UTC)
     )
 
-    transactions : Mapped[list[Transactions]] = relationship(
+    transactions : Mapped[list["Transactions"]] = relationship(
         back_populates="user",
         cascade="all, delete-orphan"
     )
-
-
-
+    budgets: Mapped[list["Budgets"]] = relationship(
+        back_populates="user",
+        cascade="all, delete-orphan"
+    )
+    categories: Mapped[list["Categories"]] = relationship(
+        back_populates="user",
+        cascade="all, delete-orphan"
+    )
 
 
 class Transactions(Base):
@@ -45,7 +50,7 @@ class Transactions(Base):
         nullable=False,
         index=True 
     )
-    type : Mapped[str] = mapped_column(SQLEnum(types), nullable=False)
+    type : Mapped[types] = mapped_column(SQLEnum(types), nullable=False)
 
     date : Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
@@ -58,6 +63,8 @@ class Transactions(Base):
     user : Mapped[User] = relationship(
         back_populates="transactions"
     )
+    category : Mapped["Categories"] = relationship(
+        back_populates="transactions")
 
 
 
@@ -82,6 +89,9 @@ class Budgets(Base):
         default=lambda: datetime.now(UTC)
     )
 
+    category : Mapped["Categories"] = relationship(
+        back_populates="budgets")
+
 
 class Categories(Base):
     __tablename__ = "categories"
@@ -90,5 +100,13 @@ class Categories(Base):
     user_id : Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False, index=True)
     category : Mapped[str] = mapped_column(String, nullable=False)
     type : Mapped [str] = mapped_column(String, nullable=False)
+
+    user: Mapped["User"] = relationship(back_populates="categories")
+    transactions: Mapped[list["Transactions"]] = relationship(
+        back_populates="category"
+    )
+    budgets: Mapped[list["Budgets"]] = relationship(
+        back_populates="category"
+    )
 
 
