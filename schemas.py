@@ -18,6 +18,10 @@ class UserResponse(UserBase):
     model_config = ConfigDict(from_attributes=True)
     id : int
     date : datetime
+
+class UserUpdate(BaseModel):
+    username: str | None = None 
+    email: EmailStr | None = None
     
 
 class TransBase(BaseModel):
