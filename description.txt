@@ -32,3 +32,32 @@ Categories :
 2 : Rent
 3 : Groceries
 4 : Freelancing
+
+/auth/register
+/auth/token
+/users/me -> get user
+/users/me -> put/patch
+/users/me -> delete
+
+/transactions -> add transaction
+/transactions -> Fetch only the logged-in sers transactions
+/transactions/{id} -> get a specific transaction
+/transactions/{id} -> Full update
+/transactions/{id} -> Partial update
+/transactions/{id} -> Delete 
+
+
+/categories -> Get all categories
+/categories -> create a custom category
+
+/budgets -> Get all budgets for logged-in user
+/budgets -> Set a budget for a category
+/budgets/{id} -> put/patch modify a budget
+/budgets/{id} -> delete
+
+
+
+
+
+
+
