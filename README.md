@@ -2,7 +2,7 @@
 
 A secure and scalable **Personal Finance Management REST API** built with **FastAPI**, **SQLAlchemy 2.0**, and **JWT Authentication**.
 
-MyFinance enables users to securely manage their personal finances by tracking income and expenses, organizing transactions into categories, creating budgets, and generating financial summaries. The project follows RESTful API principles and leverages asynchronous database operations for improved performance.
+MyFinance is a secure and intelligent Personal Finance Management REST API built with FastAPI. It enables users to manage income, expenses, budgets, and categories while providing AI-generated financial insights powered by Google Gemini. The project demonstrates modern backend development practices including JWT authentication, asynchronous database operations, RESTful API design, and Large Language Model (LLM) integration.
 
 ---
 
@@ -15,6 +15,7 @@ MyFinance enables users to securely manage their personal finances by tracking i
 * Category-based Transaction Organization
 * Budget Management
 * Financial Summary Dashboard
+* AI-generated Financial Summaries and Spending Insights
 * Asynchronous Database Operations
 * Request & Response Validation with Pydantic
 * Automatic Interactive API Documentation (Swagger & ReDoc)
@@ -31,6 +32,7 @@ MyFinance enables users to securely manage their personal finances by tracking i
 | Validation       | Pydantic v2            |
 | Authentication   | JWT (PyJWT)            |
 | Password Hashing | Argon2 (pwdlib)        |
+| AI               | Google Gemini API      |
 | Server           | Uvicorn                |
 
 ---
@@ -45,13 +47,16 @@ MyFinance/
 │   ├── transactions.py
 │   ├── budgets.py
 │   └── categories.py
-│
+├── prompts/
+│   └── summary_prompt.txt
+|
 ├── auth.py
 ├── config.py
 ├── database.py
 ├── models.py
 ├── schemas.py
 ├── main.py
+├── summary.py
 ├── requirements.txt
 └── transactions.db
 ```
@@ -150,11 +155,12 @@ Protected endpoints automatically authenticate the currently logged-in user.
 
 ## Financial Summary
 
-| Method | Endpoint   | Description                        |
-| ------ | ---------- | ---------------------------------- |
-| GET    | `/summary` | Retrieve overall financial summary |
+| Method | Endpoint               | Description                                                   |
+| ------ | ---------------------- | --------------------------------------------------------------|
+| GET    | `/category_summary`    | Retrieve overall financial summary                            |
+| GET    | `/ai_summary`          | Generate an AI-powered financial analysis and recommendations |
 
-The summary endpoint provides:
+The category summary endpoint provides:
 
 * Total Income
 * Total Budget
@@ -162,6 +168,31 @@ The summary endpoint provides:
 * Budget Allocation by Category
 * Total Spending by Category
 * Remaining Budget per Category
+
+
+# AI Financial Summary
+
+MyFinance integrates the **Google Gemini API** to transform raw financial data into actionable insights.
+
+Instead of returning only numerical statistics, the AI analyzes the user's:
+
+- Total Income
+- Total Budget
+- Remaining Budget
+- Category-wise Spending
+- Budget Utilization
+
+and generates a structured financial summary that includes:
+
+- Spending analysis
+- Budget performance
+- Financial observations
+- Personalized recommendations
+- Areas where overspending is detected
+
+The AI receives structured financial data from the backend and produces a JSON response, making it easy for frontend applications to display intelligent financial insights.
+
+This feature demonstrates practical integration of Large Language Models (LLMs) into a production-style REST API.
 
 ---
 
@@ -211,6 +242,7 @@ Create a `.env` file in the project root.
 
 ```env
 SECRET_KEY=your_super_secret_key
+GEMINI_API_KEY=your_google_ai_studio_api_key
 ```
 
 ---
@@ -256,6 +288,7 @@ MyFinance includes several security best practices:
 * Pydantic request validation
 * Centralized exception handling
 * Environment variable configuration for secrets
+* Secure AI API key management using environment variables
 
 ---
 

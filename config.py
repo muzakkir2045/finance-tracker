@@ -9,6 +9,7 @@ class Settings(BaseSettings):
     )
 
     secret_key : SecretStr
+    gemini_api_key : SecretStr
     algorithm : str = "HS256"
     access_token_expire_minutes : int = 30
 
