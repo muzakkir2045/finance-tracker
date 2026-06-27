@@ -3,15 +3,14 @@ import models
 from contextlib import asynccontextmanager
 from fastapi.exception_handlers import http_exception_handler, request_validation_exception_handler
 from fastapi import FastAPI, HTTPException, Depends, status, Request
-from sqlalchemy import select, insert, func, and_
+from sqlalchemy import select, func, and_
 from fastapi.exceptions import RequestValidationError
-
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload, joinedload
 from database import Base, engine, get_db
+from sqlalchemy.orm import selectinload
 from typing import Annotated
-from routers import users, transactions, budgets, categories
+from routers import users, transactions, budgets
 from auth import CurrentUser
 
 
@@ -55,48 +54,57 @@ async def home(current_user: CurrentUser, db: Annotated[AsyncSession, Depends(ge
 @app.get("/summary")
 async def monthly_summary(current_user: CurrentUser ,db: Annotated[AsyncSession, Depends(get_db)]):
     user_id = current_user.id
-    
+
     result = await db.execute(
-        select(func.sum(models.Transactions.amount))
-        .select_from(models.Transactions)
+        select(models.User)
+        .options(selectinload(models.User.transactions), selectinload(models.User.budgets))
+        .where(models.User.id == current_user.id)
+    )
+    user = result.scalars().first()
+
+  
+    result = await db.execute(
+        select(func.coalesce(func.sum(models.Transactions.amount), 0))
         .where(models.Transactions.user_id == user_id , models.Transactions.type == "Income")
     )
 
     total_income = result.scalar()
-    if not total_income:
-        total_income = 0
+
 
 
     result = await db.execute(
-        select(func.sum(models.Budgets.amount))
-        .select_from(models.Budgets)
+        select(func.coalesce(func.sum(models.Budgets.amount), 0))
         .where(models.Budgets.user_id == user_id)
     )
     total_budget = result.scalar()
-    if not total_budget:
-        total_budget = 0
+
 
 
     st = await db.execute(
         select(
             models.Categories.category,
-            (models.Budgets.amount).label("budget"),
-            func.sum(models.Transactions.amount).label("total_spent"),
-            (models.Budgets.amount - func.sum(models.Transactions.amount)).label("remaining")
+            func.coalesce(models.Budgets.amount, 0).label("budget"),
+            func.coalesce(func.sum(models.Transactions.amount), 0).label("total_spent"),
+            (func.coalesce(models.Budgets.amount, 0) - func.coalesce(func.sum(models.Transactions.amount), 0)).label("remaining")
         )
         .select_from(models.Categories)
-        .join(models.Budgets, models.Categories.id == models.Budgets.category_id, isouter=True)
-        .join(models.Transactions, and_(models.Categories.id == models.Transactions.category_id, models.Categories.type == "Expense"), isouter=True)
-        .where(models.Transactions.user_id == user_id)
-        .group_by(models.Categories.category, models.Budgets.amount)
+        .outerjoin(models.Budgets, and_(models.Categories.id == models.Budgets.category_id, models.Budgets.user_id == user_id))
+        .outerjoin(models.Transactions, and_(models.Categories.id == models.Transactions.category_id, models.Transactions.user_id == user_id))
+        .where(models.Categories.user_id == user_id, models.Categories.type == "Expense")
+        .group_by(models.Categories.id, models.Categories.category, models.Budgets.amount)
     )
 
     result = st.mappings().all()
+    if total_budget:
+        total_remaining = (total_income - total_budget)
+    else:
+        total_remaining = "Budget not added, Add a budget to get the remaining amount"
+
     return {
         "summary" : result,
         "total_income" : total_income,
         "total_budget" : total_budget,
-        "total_remaining" : (total_income - total_budget)
+        "total_remaining" : total_remaining
     }
 
 
