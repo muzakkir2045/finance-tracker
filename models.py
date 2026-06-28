@@ -97,7 +97,7 @@ class Categories(Base):
 
     id : Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     user_id : Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False, index=True)
-    category : Mapped[str] = mapped_column(String, nullable=False)
+    category_name : Mapped[str] = mapped_column(String, nullable=False)
     type : Mapped [str] = mapped_column(String, nullable=False)
 
     user: Mapped["User"] = relationship(back_populates="categories")

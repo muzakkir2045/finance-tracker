@@ -11,7 +11,7 @@ from database import Base, engine, get_db
 from sqlalchemy.orm import selectinload
 from summary import category_summary, ai_summary
 from typing import Annotated
-from routers import users, transactions, budgets
+from routers import users, transactions, budgets, categories
 from auth import CurrentUser
 
 
@@ -30,6 +30,7 @@ app = FastAPI(lifespan=lifespan)
 app.include_router(users.router, prefix = "/api/users", tags=["users"])
 app.include_router(transactions.router, prefix = "/api/transactions", tags=["transactions"])
 app.include_router(budgets.router, prefix = "/api/budgets", tags=["budgets"])
+app.include_router(categories.router, prefix = "/api/categories", tags=["categories"])
 
 
 # CRUD for both transactions and budgets

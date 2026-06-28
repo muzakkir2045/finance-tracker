@@ -1,11 +1,10 @@
 
 import models
 from typing import Annotated
-from schemas import UserResponse, UserCreate, UserUpdate, TransResponse, BudgetResponse
+from schemas import UserResponse, UserCreate, UserUpdate
 from schemas import Token
 from fastapi import status, Depends, HTTPException, APIRouter
 from sqlalchemy import select, insert, func
-from sqlalchemy.orm import joinedload
 from database import get_db
 from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import timedelta
@@ -56,10 +55,10 @@ async def create_user(user: UserCreate, db: Annotated[AsyncSession, Depends(get_
     
     await db.execute(
         insert(models.Categories),[
-            {"user_id" : new_user.id , "category" : "Salary", "type" : "Income"},
-            {"user_id" : new_user.id , "category" : "Rent", "type" : "Expense"},
-            {"user_id" : new_user.id , "category" : "Groceries", "type" : "Expense"},
-            {"user_id" : new_user.id , "category" : "Freelancing", "type" : "Income"}
+            {"user_id" : new_user.id , "category_name" : "Salary", "type" : "Income"},
+            {"user_id" : new_user.id , "category_name" : "Rent", "type" : "Expense"},
+            {"user_id" : new_user.id , "category_name" : "Groceries", "type" : "Expense"},
+            {"user_id" : new_user.id , "category_name" : "Freelancing", "type" : "Income"}
         ]
     )
     await db.commit()

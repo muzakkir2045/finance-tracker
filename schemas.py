@@ -69,7 +69,7 @@ class BudgetResponse(BudgetBase):
 
 
 class CategoryBase(BaseModel):
-    category : str
+    category_name : str
     type : str
 
 class CategoryCreate(CategoryBase):
@@ -78,7 +78,7 @@ class CategoryCreate(CategoryBase):
 class CategoryResponse(CategoryBase):
     model_config = ConfigDict(from_attributes=True)
 
-    id : int
+    # id : int
     user_id : int
 
 class Summary(BaseModel):

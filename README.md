@@ -153,6 +153,15 @@ Protected endpoints automatically authenticate the currently logged-in user.
 
 ---
 
+## Categories
+
+| Method | Endpoint          |
+| ------ | ----------------- |
+| GET    | `/api/categories` |
+| POST   | `/api/categories` |
+
+---
+
 ## Financial Summary
 
 | Method | Endpoint               | Description                                                   |
